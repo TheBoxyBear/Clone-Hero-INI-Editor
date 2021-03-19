@@ -1,17 +1,42 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.IO;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace WindowsFormsApp1
 {
     public partial class frmMain : Form
     {
+        Dictionary<string, Control> fieldMap = new Dictionary<string, Control>();
         string path;
         bool isNew;
         public frmMain()
         {
             InitializeComponent();
+
+            fieldMap.Add("arsist = ", txtArtist);
+            fieldMap.Add("name = ", txtSongName);
+            fieldMap.Add("charter = ", txtCharter);
+            fieldMap.Add("icon = ", txtIcon);
+            fieldMap.Add("album = ", txtAlbum);
+            fieldMap.Add("year = ", txtYear);
+            fieldMap.Add("genre = ", txtGenre);
+            fieldMap.Add("song_length = ", txtSongLength);
+            fieldMap.Add("preview_start_time = ", txtPreviewStartTime);
+            fieldMap.Add("count = ", txtCount);
+            fieldMap.Add("playlist_track = ", txtPlaylistTrack);
+            fieldMap.Add("track = ", txtAlbumTrack);
+            fieldMap.Add("delay = ", txtDelay);
+            fieldMap.Add("loading_phrase = ", txtLoadingPhrase);
+            fieldMap.Add("diff_guitar", cboguitarDifficulty);
+            fieldMap.Add("diff_band", cboBandDifficulty);
+            fieldMap.Add("diff_bass", cboBandDifficulty);
+            fieldMap.Add("diff_keys", cboKeysDifficulty);
+            fieldMap.Add("diff_drums", cboDrumsDifficulty);
+            fieldMap.Add("diff_guitarghl", cboGuitarGHLDifficulty);
+            fieldMap.Add("difF_bassghl", cboBandDifficulty);
         }
 
         private void openToolStripMenuItem_Click(object sender, EventArgs e)
@@ -21,354 +46,134 @@ namespace WindowsFormsApp1
 
         private void openToolStripMenuItem1_Click(object sender, EventArgs e)
         {
-            clearData();
-            OpenFileDialog f = new OpenFileDialog();
-            f.Filter = "CH INI Configuration Files |*.ini";
-            f.Multiselect = false;
-            DialogResult r = f.ShowDialog();
-            if (r == DialogResult.OK)
+            ClearData();
+
+            using OpenFileDialog f = new OpenFileDialog
             {
-                DialogResult b;
-                b = MessageBox.Show("Would you like to back up the current file before overwriting?", "Back up file first?", MessageBoxButtons.YesNo);
-                if (b == DialogResult.Yes)
+                Filter = "CH INI Configuration Files |*.ini",
+                Multiselect = false
+            };
+
+            if (f.ShowDialog() ==  DialogResult.OK)
+            {
+                if (MessageBox.Show("Would you like to back up the current file before overwriting?", "Back up file first?", MessageBoxButtons.YesNo) == DialogResult.Yes)
                 {
                     string filename = f.FileName;
                     int idx = filename.LastIndexOf("\\");
-                    filename = filename.Substring(idx, filename.Length - idx);
-                    filename = filename.Replace("\\", "");
-                    filename = DateTime.Now.ToString() + "_" + filename;
-                    filename = filename.Replace("/", "_");
-                    filename = filename.Replace(":", " ");
-                    System.IO.Directory.CreateDirectory(Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName) + "\\backup\\");
-                    System.IO.File.Copy(f.FileName, Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName) + "\\backup\\" + filename);
+
+                    filename = (DateTime.Now.ToString() + "_" + filename.Substring(idx, filename.Length - idx).Replace("\\", "")).Replace("/", "_").Replace(":", " ");
+
+                    Directory.CreateDirectory(Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName) + "\\backup\\");
+                    File.Copy(f.FileName, Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName) + "\\backup\\" + filename);
                 }
                 path = f.FileName;
                 isNew = false;
-                System.IO.StreamReader file = new System.IO.StreamReader(path);
+                StreamReader file = new StreamReader(path);
 
                 foreach (string txtline in File.ReadLines(path))
                 {
                     //chop up the output one line at a time to determine what value is selected..this will be a bit ugly..
                     //fix for lines with no space between the equal sign and the label...
                     string line = txtline;
-                    if (line.Contains(" = ") == false && line.Contains("]") == false && line.Contains("]") == false && line.Length > 0 && line.StartsWith(";") == false)
+                    if (!line.Contains(" = ") && !line.Contains("]") && !line.Contains("]") && line.Length > 0 && !line.StartsWith(";"))
                     {
                         int position = line.IndexOf("=");
-                        string start = line.Substring(0, position);
-                        string end = line.Replace(start, "");
-                        start = start.Trim();
-                        end = end.Trim();
-                        end = end.Replace("=", " = ");
+                        string start = line.Substring(0, position).Trim();
+                        string end = line.Replace(start, "").Trim().Replace("=", " = ");
 
                         line = start + end;
+                    }
 
-                    }
-                    if (line.StartsWith("artist = "))
-                    {
-                        txtArtist.Text = line.Replace("artist = ", "");
-                    }
-                    if (line.StartsWith("name = "))
-                    {
-                        txtSongName.Text = line.Replace("name = ", "");
-                    }
                     //charter and frets are really one in the same....
-                    if (line.StartsWith("charter = "))
-                    {
-                        txtCharter.Text = line.Replace("charter = ", "");
-                    }
                     if (line.StartsWith("frets = ") && txtCharter.Text == "")
-                    {
                         txtCharter.Text = line.Replace("frets = ", "");
-                    }
-                    if (line.StartsWith("icon = "))
-                    {
-                        txtIcon.Text = line.Replace("icon = ", "");
-                    }
-                    if (line.StartsWith("album = "))
-                    {
-                        txtAlbum.Text = line.Replace("album = ", "");
-                    }
-                    if (line.StartsWith("year = "))
-                    {
-                        txtYear.Text = line.Replace("year = ", "");
-                    }
-                    if (line.StartsWith("diff_guitar = "))
-                    {
-                        string tmp = line.Replace("diff_guitar = ", "");
-                        switch (tmp)
+                    else if (line.StartsWith(";"))
+                        txtComments.Text = txtComments.Text + line.Replace(";", "").Trim() + Environment.NewLine;
+                    else foreach (KeyValuePair<string, Control> pair in fieldMap)
+                        if (line.StartsWith(pair.Key))
                         {
-                            case "-1":
-                            case "0":
-                            case "1":
-                            case "2":
-                            case "3":
-                            case "4":
-                            case "5":
-                            case "6":
-                                cboguitarDifficulty.SelectedIndex = int.Parse(tmp) + 1;
+                            //charter and frets are really one in the same....
+                            if (line.StartsWith("frets = ") && txtCharter.Text == "")
+                            {
+                                txtCharter.Text = line.Replace("frets = ", "");
                                 break;
+                            }
 
+                            switch (pair.Value)
+                            {
+                                case TextBox txt:
+                                    txt.Text = line.Replace(pair.Key, "");
+                                    break;
+                                case ComboBox cbo:
+                                    if (int.TryParse(line.Replace(pair.Key, ""), out int diff) && diff is > -2 and < 7)
+                                        cbo.SelectedIndex = diff + 1;
+                                    break;
+                            }
+
+                            break;
                         }
-                    }
-                    if (line.StartsWith("diff_band = "))
-                    {
-                        string tmp = line.Replace("diff_band = ", "");
-                        switch (tmp)
-                        {
-                            case "-1":
-                            case "0":
-                            case "1":
-                            case "2":
-                            case "3":
-                            case "4":
-                            case "5":
-                            case "6":
-                                cboBandDifficulty.SelectedIndex = int.Parse(tmp) + 1;
-                                break;
-
-                        }
-                    }
-                    if (line.StartsWith("diff_bass = "))
-                    {
-                        string tmp = line.Replace("diff_bass = ", "");
-                        switch (tmp)
-                        {
-                            case "-1":
-                            case "0":
-                            case "1":
-                            case "2":
-                            case "3":
-                            case "4":
-                            case "5":
-                            case "6":
-                                cboBassDifficulty.SelectedIndex = int.Parse(tmp) + 1;
-                                break;
-
-                        }
-                    }
-                    if (line.StartsWith("diff_drums = "))
-                    {
-                        string tmp = line.Replace("diff_drums = ", "");
-                        switch (tmp)
-                        {
-                            case "-1":
-                            case "0":
-                            case "1":
-                            case "2":
-                            case "3":
-                            case "4":
-                            case "5":
-                            case "6":
-                                cboDrumsDifficulty.SelectedIndex = int.Parse(tmp) + 1;
-                                break;
-
-                        }
-                    }
-                    if (line.StartsWith("diff_keys = "))
-                    {
-                        string tmp = line.Replace("diff_keys = ", "");
-                        switch (tmp)
-                        {
-                            case "-1":
-                            case "0":
-                            case "1":
-                            case "2":
-                            case "3":
-                            case "4":
-                            case "5":
-                            case "6":
-                                cboKeysDifficulty.SelectedIndex = int.Parse(tmp) + 1;
-                                break;
-
-                        }
-                    }
-                    if (line.StartsWith("diff_guitarghl = "))
-                    {
-                        string tmp = line.Replace("diff_guitarghl = ", "");
-                        switch (tmp)
-                        {
-                            case "-1":
-                            case "0":
-                            case "1":
-                            case "2":
-                            case "3":
-                            case "4":
-                            case "5":
-                            case "6":
-                                cboGuitarGHLDifficulty.SelectedIndex = int.Parse(tmp) + 1;
-                                break;
-
-                        }
-                    }
-                    if (line.StartsWith("diff_bassghl = "))
-                    {
-                        string tmp = line.Replace("diff_bassghl = ", "");
-                        switch (tmp)
-                        {
-                            case "-1":
-                            case "0":
-                            case "1":
-                            case "2":
-                            case "3":
-                            case "4":
-                            case "5":
-                            case "6":
-                                cboKeysDifficulty.SelectedIndex = int.Parse(tmp) + 1;
-                                break;
-
-                        }
-                    }
-                    if (line.StartsWith("genre = "))
-                    {
-                        txtGenre.Text = line.Replace("genre = ", "");
-                    }
-                    if (line.StartsWith("song_length = "))
-                    {
-
-                        txtSongLength.Text = line.Replace("song_length = ", "");
-                    }
-                    if (line.StartsWith("preview_start_time = "))
-                    {
-
-                        txtPreviewStartTime.Text = line.Replace("preview_start_time = ", "");
-                    }
-                   
-                    if (line.StartsWith("count = "))
-                    {
-                        txtCount.Text = line.Replace("count = ", "");
-                    }
-                    if (line.StartsWith("playlist_track ="))
-                    {
-                        txtPlaylistTrack.Text = line.Replace("playlist_track = ", "");
-                    }
-                    if (line.StartsWith("track = "))
-                    {
-                        txtAlbumTrack.Text = line.Replace("track = ", "");
-                    }
-                    if (line.StartsWith("album_track = "))
-                    {
-                        txtAlbumTrack.Text = line.Replace("album_track = ", "");
-                    }
-                    if (line.StartsWith("delay = "))
-                    {
-                        txtDelay.Text = line.Replace("delay = ", "");
-                    }
-                    if (line.StartsWith("loading_phrase = "))
-                    {
-                        txtLoadingPhrase.Text = line.Replace("loading_phrase = ", "");
-                    }
 
                     if (line.StartsWith(";"))
-                    {
                         txtComments.Text = txtComments.Text + line.Replace(";", "").Trim() + Environment.NewLine;
-                    }
-
                 }
-
 
                 file.Close();
                 txtComments.Text = txtComments.Text.Trim();
             }
-
-
-
         }
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            
             isNew = true; //by default.  If a file is opened later, this will get swapped..
-            DataTable dt = new DataTable();
-            dt.Columns.Add("Name");
-            dt.Columns.Add("Value");
-            for (int i = -1; i < 7; i++)
+            DataTable[] dts = new DataTable[7];
+
+            for (int i = 0; i < 7; i++)
+                dts[i] = new DataTable();
+
+            dts[0].Columns.Add("Name");
+            dts[0].Columns.Add("Value");
+            dts[0].Rows.Add("N/A", -1);
+
+            for (int i = 0; i < 7; i++)
+                dts[0].Rows.Add(i.ToString(), i);
+
+            foreach (DataTable dt in dts[1..])
             {
-                if (i == -1)
-                {
-                    dt.Rows.Add("N/A", i);
-                }
-                else
-                {
-                    dt.Rows.Add(i.ToString(), i);
-                }
-            }
-            DataTable dt2 = new DataTable();
-            DataTable dt3 = new DataTable();
-            DataTable dt4 = new DataTable();
-            DataTable dt5 = new DataTable();
-            DataTable dt6 = new DataTable();
-            DataTable dt7 = new DataTable();
-            dt2.Columns.Add("Name");
-            dt2.Columns.Add("Value");
-            dt3.Columns.Add("Name");
-            dt3.Columns.Add("Value");
-            dt4.Columns.Add("Name");
-            dt4.Columns.Add("Value");
-            dt5.Columns.Add("Name");
-            dt5.Columns.Add("Value");
-            dt6.Columns.Add("Name");
-            dt6.Columns.Add("Value");
-            dt7.Columns.Add("Name");
-            dt7.Columns.Add("Value");
-            foreach (DataRow dr in dt.Rows)
-            {
-                    dt2.Rows.Add(dr.ItemArray);
-            }
-            foreach (DataRow dr in dt.Rows)
-            {
-                dt3.Rows.Add(dr.ItemArray);
-            }
-            foreach (DataRow dr in dt.Rows)
-            {
-                dt4.Rows.Add(dr.ItemArray);
-            }
-            foreach (DataRow dr in dt.Rows)
-            {
-                dt5.Rows.Add(dr.ItemArray);
-            }
-            foreach (DataRow dr in dt.Rows)
-            {
-                dt6.Rows.Add(dr.ItemArray);
-            }
-            foreach (DataRow dr in dt.Rows)
-            {
-                dt7.Rows.Add(dr.ItemArray);
+                dt.Columns.Add("Name");
+                dt.Columns.Add("Value");
+
+                foreach (DataRow row in dts[0].Rows)
+                    dt.Rows.Add(row.ItemArray);
             }
 
-            cboBandDifficulty.DataSource = dt;
+            cboBandDifficulty.DataSource = dts[0];
             cboBandDifficulty.DisplayMember = "Name";
             cboBandDifficulty.ValueMember = "Value";
-            cboBassDifficulty.DataSource = dt2;
+            cboBassDifficulty.DataSource = dts[1];
             cboBassDifficulty.DisplayMember = "Name";
             cboBassDifficulty.ValueMember = "Value";
-            cboBassGHLDifficulty.DataSource = dt3;
+            cboBassGHLDifficulty.DataSource = dts[2];
             cboBassGHLDifficulty.DisplayMember = "Name";
             cboBassGHLDifficulty.ValueMember = "Value";
-            cboDrumsDifficulty.DataSource = dt4;
+            cboDrumsDifficulty.DataSource = dts[3];
             cboDrumsDifficulty.DisplayMember = "Name";
             cboDrumsDifficulty.ValueMember = "Value";
-            cboguitarDifficulty.DataSource = dt5;
+            cboguitarDifficulty.DataSource = dts[4];
             cboguitarDifficulty.DisplayMember = "Name";
             cboguitarDifficulty.ValueMember = "Value";
-            cboGuitarGHLDifficulty.DataSource = dt6;
+            cboGuitarGHLDifficulty.DataSource = dts[5];
             cboGuitarGHLDifficulty.DisplayMember = "Name";
             cboGuitarGHLDifficulty.ValueMember = "Value";
-            cboKeysDifficulty.DataSource = dt7;
+            cboKeysDifficulty.DataSource = dts[6];
             cboKeysDifficulty.DisplayMember = "Name";
             cboKeysDifficulty.ValueMember = "Value";
 
-            if (!String.IsNullOrEmpty(Properties.Settings.Default.Icon))
-            {
+            if (!string.IsNullOrEmpty(Properties.Settings.Default.Icon))
                 txtIcon.Text = Properties.Settings.Default.Icon;
-            }
-            if (!String.IsNullOrEmpty(Properties.Settings.Default.Charter))
-            {
+            if (!string.IsNullOrEmpty(Properties.Settings.Default.Charter))
                 txtCharter.Text = Properties.Settings.Default.Charter;
-            }
-            if (!String.IsNullOrEmpty(Properties.Settings.Default.Charter))
-            {
+            if (!string.IsNullOrEmpty(Properties.Settings.Default.Charter))
                 txtGenre.Text = Properties.Settings.Default.Genre;
-            }
         }
 
         private void cboBandDifficulty_SelectedIndexChanged(object sender, EventArgs e)
@@ -378,53 +183,36 @@ namespace WindowsFormsApp1
 
         private void button1_Click(object sender, EventArgs e)
         {
-            string err = validateRequiredFields();
-            bool varSuggestedFields = validateSuggestedFields();
-
-            if (err == "" && varSuggestedFields == true)
+            if (ValidateSuggestedFields())
             {
-                if (isNew == false)
+                if (ValidateRequiredFields(out string err))
                 {
-
-                    DialogResult r;
-                    r = MessageBox.Show("This will overwrite the existing file", "Overwrite?", MessageBoxButtons.OKCancel);
-                    if (r == DialogResult.OK)
+                    if (isNew)
                     {
-                        writeFile(path);
+                        using SaveFileDialog f = new SaveFileDialog
+                        {
+                            AddExtension = true,
+                            DefaultExt = ".ini",
+                            Filter = "CH INI Configuration Files |*.ini"
+                        };
+
+                        if (f.ShowDialog() == DialogResult.OK)
+                        {
+                            path = f.FileName;
+                            WriteFile(path);
+                        }
                     }
+                    else if (MessageBox.Show("This will overwrite the existing file", "Overwrite?", MessageBoxButtons.OKCancel) == DialogResult.OK)
+                        WriteFile(path);
                 }
                 else
-                {
-                    SaveFileDialog f = new SaveFileDialog();
-                    f.AddExtension = true;
-                    f.DefaultExt = ".ini";
-                    f.Filter = "CH INI Configuration Files |*.ini";
-                    DialogResult r;
-                    r = f.ShowDialog();
-                    if (r == DialogResult.OK)
-                    {
-                        path = f.FileName;
-                        writeFile(path);
-                    }
-                }
-            }
-            else
-            {
-                if (varSuggestedFields == true)
-                {
                     MessageBox.Show(err, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-                
             }
-           
-
-
         }
-
 
         private void newToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            clearData();
+            ClearData();
             isNew = true;
         }
 
@@ -435,163 +223,99 @@ namespace WindowsFormsApp1
 
         private void saveAsToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            string err = validateRequiredFields();
-            bool varSuggestedFields = validateSuggestedFields();
-            if (err == "" && varSuggestedFields == true)
+            if (ValidateSuggestedFields())
             {
-                SaveFileDialog f = new SaveFileDialog();
-                DialogResult r;
-                r = f.ShowDialog();
-                f.AddExtension = true;
-                f.DefaultExt = ".ini";
-                f.Filter = "CH INI Configuration Files |*.ini";
-                if (r == DialogResult.OK)
+                if (ValidateRequiredFields(out string err))
                 {
-                    path = f.FileName;
-                    writeFile(path);
+                    using SaveFileDialog f = new SaveFileDialog
+                    {
+                        AddExtension = true,
+                        DefaultExt = ".ini",
+                        Filter = "CH INI Configuration Files |*.ini"
+                    };
+
+                    if (f.ShowDialog() == DialogResult.OK)
+                    {
+                        path = f.FileName;
+                        WriteFile(path);
+                    }
                 }
-            }
-            else
-            {
-                if (varSuggestedFields == true)
-                {
+                else
                     MessageBox.Show(err, "Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-                
             }
-           
         }
 
-        private void writeFile(string path)
+        private void WriteFile(string path)
         {
+            using StreamWriter outputFile = new StreamWriter(path, false);
 
-            using (System.IO.StreamWriter outputFile = new StreamWriter(path, false))
+            outputFile.WriteLine("[Song]");
+
+            foreach (string str in txtComments.Text.Split('\n'))
+                outputFile.WriteLine(";" + str);
+
+            foreach (KeyValuePair<string, Control> pair in fieldMap)
             {
-                outputFile.WriteLine("[Song]");
-                foreach (string str in txtComments.Text.Split('\n'))
+                switch (pair.Value)
                 {
-                    outputFile.WriteLine(";" + str);
+                    case TextBox txt:
+                        if (txt.Text != "" || pair.Key is "name == " or "artist = ")
+                            outputFile.WriteLine(pair.Key + txt);
+                        break;
+                    case ComboBox cbo:
+                        outputFile.WriteLine(pair.Key, cbo.SelectedValue);
+                        break;
                 }
-                //required fields.
-                outputFile.WriteLine("name = " + txtSongName.Text);
-                outputFile.WriteLine("artist = " + txtArtist.Text);
-                //the next several are optional and may not exist.  skip over them if blank...
-                if (txtAlbum.Text != "")
-                {
-                    outputFile.WriteLine("album = " + txtAlbum.Text);
-                }
-                if (txtGenre.Text != "")
-                {
-                    outputFile.WriteLine("genre = " + txtGenre.Text);
-                }
-                if (txtYear.Text != "")
-                {
-                    outputFile.WriteLine("year = " + txtYear.Text);
-                }
-                if (txtSongLength.Text != "")
-                {
-                    outputFile.WriteLine("song_length = " + txtSongLength.Text);
-                }
-                if (txtCount.Text != "")
-                {
-                    outputFile.WriteLine("count = " + txtCount.Text);
-                }
-                //difficulties.  These will always be written regardless, as they will always have some value.
-                outputFile.WriteLine("diff_band = " + cboBandDifficulty.SelectedValue);
-                outputFile.WriteLine("diff_guitar = " + cboguitarDifficulty.SelectedValue);
-                outputFile.WriteLine("diff_bass = " + cboBassDifficulty.SelectedValue);
-                outputFile.WriteLine("diff_drums = " + cboDrumsDifficulty.SelectedValue);
-                outputFile.WriteLine("diff_keys = " + cboKeysDifficulty.SelectedValue);
-                outputFile.WriteLine("diff_guitarghl = " + cboGuitarGHLDifficulty.SelectedValue);
-                outputFile.WriteLine("diff_bassghl = " + cboBassGHLDifficulty.SelectedValue);
-                //some more optional stuff.
-                if (txtPreviewStartTime.Text != "")
-                {
-                    outputFile.WriteLine("preview_start_time = " + txtPreviewStartTime.Text);
-                }
-                if (txtCharter.Text != "")
-                {
-                    outputFile.WriteLine("frets = " + txtCharter.Text);
-                    outputFile.WriteLine("charter = " + txtCharter.Text);
-                }
-                if (txtIcon.Text != "")
-                {
-                    outputFile.WriteLine("icon = " + txtIcon.Text);
-                }
-                if (txtAlbumTrack.Text != "")
-                {
-                    outputFile.WriteLine("album_track = " + txtAlbumTrack.Text);
-                }
-                if (txtPlaylistTrack.Text != "")
-                {
-                    outputFile.WriteLine("playlist_track = " + txtPlaylistTrack.Text);
-                }
-                if (txtDelay.Text != "")
-                {
-                    outputFile.WriteLine("delay = " + txtDelay.Text);
-                }
-                if (txtLoadingPhrase.Text != "")
-                {
-                    outputFile.WriteLine("loading_phrase = " + txtLoadingPhrase.Text);
-                }
-                
             }
+
             MessageBox.Show("ini file saved successfully!", "Success!");
         }
 
-        private void clearData()
+        private void ClearData()
         {
+            foreach (Control con in fieldMap.Values) 
+                switch (con)
+                {
+                    case TextBox txt:
+                        txt.Text = "";
+                        break;
+                    case ComboBox cbo:
+                        cbo.SelectedIndex = 0;
+                        break;
+                }
 
-            txtSongName.Text = "";
-            txtArtist.Text = "";
-            txtAlbum.Text = "";
-            txtGenre.Text = "";
-            txtYear.Text = "";
-            txtSongLength.Text = "";
-            txtCount.Text = "";
-            txtPreviewStartTime.Text = "";
-            txtIcon.Text = "";
-            txtCharter.Text = "";
-            txtAlbumTrack.Text = "";
-            txtPlaylistTrack.Text = "";
-            txtDelay.Text = "";
-            txtLoadingPhrase.Text = "";
-            cboBandDifficulty.SelectedIndex = 0;
-            cboBassDifficulty.SelectedIndex = 0;
-            cboBassGHLDifficulty.SelectedIndex = 0;
-            cboDrumsDifficulty.SelectedIndex = 0;
-            cboguitarDifficulty.SelectedIndex = 0;
-            cboGuitarGHLDifficulty.SelectedIndex = 0;
-            cboKeysDifficulty.SelectedIndex = 0;
-            if (!String.IsNullOrEmpty(Properties.Settings.Default.Icon))
+            if (!string.IsNullOrEmpty(Properties.Settings.Default.Icon))
             {
                 txtIcon.Text = Properties.Settings.Default.Icon;
             }
-            if (!String.IsNullOrEmpty(Properties.Settings.Default.Charter))
+            if (!string.IsNullOrEmpty(Properties.Settings.Default.Charter))
             {
                 txtCharter.Text = Properties.Settings.Default.Charter;
             }
-            if (!String.IsNullOrEmpty(Properties.Settings.Default.Genre))
+            if (!string.IsNullOrEmpty(Properties.Settings.Default.Genre))
             {
                 txtCharter.Text = Properties.Settings.Default.Genre;
             }
         }
 
-        private string validateRequiredFields()
+        private bool ValidateRequiredFields(out string errMsg)
         {
-            string errMsg = "";
             if (txtSongName.Text == "")
             {
                 errMsg = "Song Title is Required!";
+                return false;
             }
-            if (txtArtist.Text == "")
+            else if (txtArtist.Text == "")
             {
                 errMsg = "Artist Name is Required!";
+                return false;
             }
-            return errMsg;
+
+            errMsg = null;
+            return true;
         }
 
-        private bool validateSuggestedFields()
+        private bool ValidateSuggestedFields()
         {
             string suggestedFieldList = "";
             if (txtCharter.Text == "")
@@ -619,26 +343,9 @@ namespace WindowsFormsApp1
                 suggestedFieldList = suggestedFieldList + "Difficulty - Guitar (Set as default)" + Environment.NewLine;
             }
             //now prompt the user if they wish to continue, if so simply return true, else return false.
-            if (suggestedFieldList != "")
-            {
-                
-                DialogResult r;
-                r = MessageBox.Show("The Following Field(s) are suggested but do not have values, or have been left at defaults!" + Environment.NewLine + suggestedFieldList + Environment.NewLine + "Do you want to Continue?", "Suggested Fields missing or default", MessageBoxButtons.YesNo);
-                if (r == DialogResult.OK)
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-                
-            }
-            else
-            {
-                return true;
-            }
-         
+            return suggestedFieldList != ""
+                ? MessageBox.Show("The Following Field(s) are suggested but do not have values, or have been left at defaults!" + Environment.NewLine + suggestedFieldList + Environment.NewLine + "Do you want to Continue?", "Suggested Fields missing or default", MessageBoxButtons.YesNo) == DialogResult.OK
+                : true;
         }
 
         private void txtIcon_TextChanged(object sender, EventArgs e)
@@ -654,84 +361,61 @@ namespace WindowsFormsApp1
 
         private void timeCalcToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            frmTimeCalculator t = new frmTimeCalculator();
+            using frmTimeCalculator t = new frmTimeCalculator();
             t.Show();
         }
 
         private void openMp3oggToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //open the media file and read in ID3 tags, populate accordingly.
-            
-            
-            OpenFileDialog f = new OpenFileDialog();
-            f.Filter = "OGG Audio Files |*.ogg|MP3 Audio Files |*.mp3";
-            f.Multiselect = false;
-            DialogResult r = f.ShowDialog();
-            if (r == DialogResult.OK)
+            using OpenFileDialog f = new OpenFileDialog()
+            {
+                Filter = "OGG Audio Files |*.ogg|MP3 Audio Files |*.mp3",
+                Multiselect = false,
+            };
+
+            if (f.ShowDialog() == DialogResult.OK)
             {
                 string audiopath = f.FileName;
                 //ID3 library from https://www.nuget.org/packages/taglib
                 TagLib.File tag = TagLib.File.Create(audiopath);
 
-                if (tag.Tag.Title + "" != "")
+                if (string.IsNullOrEmpty(tag.Tag.Title))
                 {
-                    clearData(); //only clear data if there's actually tags to update..presumption is that the track will have a title.
+                    ClearData(); //only clear data if there's actually tags to update..presumption is that the track will have a title.
                     isNew = true;
-
                 }
                 else
-                {
                     MessageBox.Show("No data could be found!  Please fill this data in manually!", "Not found!", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
 
                 foreach (var artist in tag.Tag.Performers)
-                {
-                    if (txtArtist.Text == "")
-                    {
-                        txtArtist.Text = artist;
-                    }
-                    else
-                    {
-                        txtArtist.Text = txtArtist.Text + ", " + artist;
-                    }
-                }
+                    txtArtist.Text = txtArtist.Text == "" ? artist : txtArtist.Text + ", " + artist;
 
                 txtAlbum.Text = tag.Tag.Album + "";
+
                 foreach (var genre in tag.Tag.Genres)
-                {
-                    if (txtGenre.Text == "")
-                    {
-                        txtGenre.Text = genre;
-                    }
-                    else
-                    {
-                        txtGenre.Text = txtGenre.Text + ", " + genre;
-                    }
-                }
+                    txtGenre.Text = txtGenre.Text == "" ? genre : txtGenre.Text + ", " + genre;
+
                 txtAlbumTrack.Text = tag.Tag.Track + "";
                 txtSongName.Text = tag.Tag.Title + "";
                 txtYear.Text = tag.Tag.Year.ToString();
+
                 if (txtAlbumTrack.Text == "0")
-                {
                     txtAlbumTrack.Text = "";
-                }
                 if (txtYear.Text == "0")
-                {
                     txtYear.Text = "";
-                }
+
                 txtSongLength.Text = tag.Properties.Duration.TotalMilliseconds.ToString();
             }
         }
 
         private void bulkEditToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            DialogResult r = MessageBox.Show("This will allow for bulk editing of numerous ini's contained within a folder structure.  This will apply changes that cannot easily be undone.  Please make sure to back up your files before continuing.  Do you want to continue?", "Warning", MessageBoxButtons.OKCancel);
-            if (r == DialogResult.OK)
+            if (MessageBox.Show("This will allow for bulk editing of numerous ini's contained within a folder structure.  This will apply changes that cannot easily be undone.  Please make sure to back up your files before continuing.  Do you want to continue?", "Warning", MessageBoxButtons.OKCancel) == DialogResult.OK)
             {
-                frmBulkEdit b = new frmBulkEdit();
+                using frmBulkEdit b = new frmBulkEdit();
                 b.ShowDialog();
-            }
-            
+            }         
         }
 
         private void btnSaveCharter_Click(object sender, EventArgs e)
@@ -755,5 +439,4 @@ namespace WindowsFormsApp1
             MessageBox.Show("Genre Saved Successfully!", "Saved Successfully!", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
     }
-
 }
